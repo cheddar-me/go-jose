@@ -356,6 +356,42 @@ func TestInvalidJWS(t *testing.T) {
 	}
 }
 
+func TestCustomCritical(t *testing.T) {
+	signer, err := NewSigner(SigningKey{PS256, rsaTestKey}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj.Signatures[0].header = &rawHeader{}
+
+	RegisterCriticalHandler("customCrit", func(value *json.RawMessage) error {
+		return nil
+	})
+	defer delete(supportedCritical, "customCrit")
+
+	if err = obj.Signatures[0].header.set(headerCritical, []string{"customCrit"}); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = obj.Verify(&rsaTestKey.PublicKey)
+	if err == nil {
+		t.Error("should not verify message with missing crit header")
+	}
+
+	if err := obj.Signatures[0].header.set("customCrit", "hi"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = obj.Verify(&rsaTestKey.PublicKey)
+	if err != nil {
+		t.Error("should verify message with valid crit header")
+	}
+}
+
 func TestSignerKid(t *testing.T) {
 	kid := "DEADBEEF"
 	payload := []byte("Lorem ipsum dolor sit amet")

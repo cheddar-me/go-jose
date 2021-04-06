@@ -365,7 +365,16 @@ func (obj JSONWebSignature) DetachedVerify(payload []byte, verificationKey inter
 	}
 
 	for _, name := range critical {
-		if !supportedCritical[name] {
+		headerValue, ok := headers[HeaderKey(name)]
+		if !ok {
+			return ErrCryptoFailure
+		}
+
+		critHandler, ok := supportedCritical[name]
+		if !ok {
+			return ErrCryptoFailure
+		}
+		if err := critHandler(headerValue); err != nil {
 			return ErrCryptoFailure
 		}
 	}
@@ -421,7 +430,16 @@ outer:
 		}
 
 		for _, name := range critical {
-			if !supportedCritical[name] {
+			headerValue, ok := headers[HeaderKey(name)]
+			if !ok {
+				continue outer
+			}
+
+			critHandler, ok := supportedCritical[name]
+			if !ok {
+				continue outer
+			}
+			if err := critHandler(headerValue); err != nil {
 				continue outer
 			}
 		}

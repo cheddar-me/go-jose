@@ -161,8 +161,23 @@ const (
 )
 
 // supportedCritical is the set of supported extensions that are understood and processed.
-var supportedCritical = map[string]bool{
-	headerB64: true,
+var supportedCritical = map[string]CriticalFunc{
+	headerB64: func(value *json.RawMessage) error {
+		return nil
+	},
+}
+
+// CriticalFunc is used to register a function that handles a custom critical header
+// If an error is returned, the signature verification fails
+type CriticalFunc func(value *json.RawMessage) error
+
+// RegisterCriticalHandler adds a handler for a specific critical header
+func RegisterCriticalHandler(header string, f CriticalFunc) {
+	if _, ok := supportedCritical[header]; ok {
+		panic("Critical handler for " + header + " registered multiple times")
+	}
+
+	supportedCritical[header] = f
 }
 
 // rawHeader represents the JOSE header for JWE/JWS objects (used for parsing).
